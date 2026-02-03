@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Rational Algebraic Cryptogram</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root { 
+            --primary: #00d2ff; --bg: #0b0e14; --accent: #f1c40f; 
+            --success: #00ff88; --card-bg: rgba(23, 32, 42, 0.95);
+        }
+
+        body { 
+            font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white;
+            margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; min-height: 100vh;
+            background-image: radial-gradient(#1e293b 1px, transparent 1px); background-size: 30px 30px;
+        }
+
+        /* PAGE TRANSITIONS */
+        .page {
+            position: absolute; width: 90%; max-width: 600px; padding: 30px;
+            background: var(--card-bg); border: 2px solid var(--primary); border-radius: 20px;
+            box-shadow: 0 0 50px rgba(0, 210, 255, 0.15);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0; transform: translateY(30px) scale(0.95); pointer-events: none;
+            text-align: center;
+        }
+
+        .page.active { opacity: 1; transform: translateY(0) scale(1); pointer-events: all; }
+
+        /* FRACTION STYLING */
+        .frac { display: inline-flex; flex-direction: column; vertical-align: middle; margin: 0 10px; }
+        .frac .numb { border-bottom: 2px solid white; padding: 0 5px; }
+        
+        .eq-card { 
+            background: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; 
+            margin: 15px 0; display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .clue-box { 
+            background: #fdf6e3; color: #5d4037; padding: 12px; border-radius: 8px; 
+            margin: 15px 0; font-style: italic; border-left: 5px solid var(--accent); text-align: left;
+        }
+
+        input { 
+            width: 80px; padding: 12px; border: 2px solid var(--primary); border-radius: 8px;
+            background: #111; color: white; text-align: center; font-size: 1.2rem;
+        }
+
+        button {
+            background: var(--primary); color: #000; border: none; padding: 15px 30px;
+            border-radius: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase;
+            transition: 0.3s; margin-top: 15px; width: 100%;
+        }
+
+        button:hover { background: var(--accent); box-shadow: 0 0 20px var(--accent); }
+
+        .join-section { margin-top: 20px; border-top: 1px solid #334155; padding-top: 20px; }
+        .phrase-display { font-size: 2.2rem; letter-spacing: 10px; color: var(--accent); margin: 20px 0; font-family: monospace; font-weight: bold; }
+        
+        #qr-code { background: white; padding: 10px; display: inline-block; border-radius: 10px; margin: 15px 0; }
+        
+        .solution-box { 
+            background: #f8fafc; color: #1e293b; padding: 15px; border-radius: 8px; 
+            margin: 15px 0; text-align: left; font-size: 0.9rem; border-top: 4px solid var(--success);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="page-lobby" class="page active">
+        <h1 style="color: var(--primary);">THE RATIONAL CRYPTOGRAM</h1>
+        <div id="qr-code"></div>
+        <p>Scan to join the session</p>
+        <div class="join-section">
+            <p>OR ENTER SESSION CODE</p>
+            <input type="text" id="join-code" placeholder="XXXX" maxlength="4" style="width: 150px; text-transform: uppercase;">
+            <button onclick="navigate('page-game')">ENTER THE GAME</button>
+        </div>
+    </div>
+
+    <div id="page-game" class="page">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span id="lvl-indicator" style="color: var(--primary); font-weight: bold;">LEVEL 1</span>
+            <span id="timer" style="font-family: monospace;">00:00</span>
+        </div>
+        <div class="phrase-display" id="cipher-output">_ _ _ _</div>
+        <div id="clue-text" class="clue-box"></div>
+        <div id="problems-container"></div>
+        <button onclick="checkAnswers()">DECODE CRYPTOGRAM</button>
+    </div>
+
+    <div id="page-trivia" class="page">
+        <h1 style="color: var(--success);">SUCCESS!</h1>
+        <p id="trivia-content" style="font-size: 1.1rem; line-height: 1.6;"></p>
+        <p id="trivia-author" style="font-style: italic; color: var(--accent);"></p>
+        <div id="step-by-step" class="solution-box"></div>
+        <button onclick="nextLevel()" id="next-btn">CONTINUE TO NEXT LEVEL ➔</button>
+    </div>
+
+    <script>
+       const gameData = [
+    {
+        lvl: 1,
+        phrase: "MATH",
+        clue: "PEMDAS: Multiply denominators to isolate the variable x.",
+        eqs: [
+            { h: `<div class="frac"><span class="numb">x</span><span>5</span></div> = 2`, a: 10 },
+            { h: `<div class="frac"><span class="numb">4</span><span>x</span></div> = 4`, a: 1 },
+            { h: `<div class="frac"><span class="numb">x</span><span>10</span></div> = 2`, a: 20 },
+            { h: `<div class="frac"><span class="numb">16</span><span>x</span></div> = 2`, a: 8 }
+        ],
+        trivia: "The word 'mathematics' comes from the Greek 'mathema', meaning knowledge or learning.",
+        author: "Aristotle",
+        steps: "<b>Logic:</b> Multiply both sides by the denominator."
+    },
+    {
+        lvl: 2,
+        phrase: "ZERO",
+        clue: "Treat grouping symbols (x+3) as a single denominator.",
+        eqs: [
+            { h: `<div class="frac"><span class="numb">26</span><span>(x + 3)</span></div> = 1`, a: 23 },
+            { h: `<div class="frac"><span class="numb">x</span><span>5</span></div> - 1 = 0`, a: 5 },
+            { h: `<div class="frac"><span class="numb">36</span><span>x</span></div> = 2`, a: 18 },
+            { h: `<div class="frac"><span class="numb">15</span><span>x</span></div> = 1`, a: 15 }
+        ],
+        trivia: "Zero was once considered meaningless in mathematics.",
+        author: "History Archives",
+        steps: "<b>Logic:</b> Clear the denominator first."
+    },
+    {
+        lvl: 3,
+        phrase: "EASY",
+        clue: "Multiply both sides to clear the denominator.",
+        eqs: [
+            { h: `<div class="frac"><span class="numb">x</span><span>4</span></div> = 3`, a: 12 },
+            { h: `<div class="frac"><span class="numb">20</span><span>x</span></div> = 5`, a: 4 },
+            { h: `<div class="frac"><span class="numb">x</span><span>6</span></div> = 2`, a: 12 },
+            { h: `<div class="frac"><span class="numb">18</span><span>x</span></div> = 3`, a: 6 }
+        ],
+        trivia: "Solving equations strengthens logical reasoning.",
+        author: "Algebra Basics",
+        steps: "<b>Step:</b> Multiply both sides by the denominator."
+    },
+    {
+        lvl: 4,
+        phrase: "SMART",
+        clue: "Move constants first, then isolate the rational term.",
+        eqs: [
+            { h: `<div class="frac"><span class="numb">x</span><span>3</span></div> + 2 = 6`, a: 12 },
+            { h: `<div class="frac"><span class="numb">x</span><span>5</span></div> - 1 = 3`, a: 20 },
+            { h: `<div class="frac"><span class="numb">24</span><span>x</span></div> + 2 = 6`, a: 6 },
+            { h: `<div class="frac"><span class="numb">x</span><span>4</span></div> + 1 = 5`, a: 16 }
+        ],
+        trivia: "Algebra is a foundation of modern technology.",
+        author: "STEM Education",
+        steps: "<b>Step:</b> Subtract constants, then multiply."
+    },
+    {
+        lvl: 5,
+        phrase: "LOGIC",
+        clue: "Treat binomials as a single denominator.",
+        eqs: [
+            { h: `<div class="frac"><span class="numb">30</span><span>(x + 5)</span></div> = 2`, a: 10 },
+            { h: `<div class="frac"><span class="numb">x</span><span>2</span></div> = 8`, a: 16 },
+            { h: `<div class="frac"><span class="numb">40</span><span>x</span></div> = 5`, a: 8 },
+            { h: `<div class="frac"><span class="numb">x</span><span>10</span></div> = 3`, a: 30 }
+        ],
+        trivia: "Logical thinking improves problem-solving accuracy.",
+        author: "Cognitive Studies",
+        steps: "<b>Step:</b> Multiply both sides by the binomial."
+    }
+        ];
+
+        let currentLvl = 0;
+
+        function navigate(targetId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(targetId).classList.add('active');
+            if(targetId === 'page-game') loadGame();
+        }
+
+        function loadGame() {
+            const data = gameData[currentLvl];
+            document.getElementById('lvl-indicator').innerText = `LEVEL ${data.lvl}`;
+            document.getElementById('cipher-output').innerText = data.phrase.replace(/./g, '_ ');
+            document.getElementById('clue-text').innerText = data.clue;
+            
+            const container = document.getElementById('problems-container');
+            container.innerHTML = '';
+            data.eqs.forEach((eq, i) => {
+                container.innerHTML += `
+                    <div class="eq-card">
+                        <div class="eq-display">${eq.h}</div>
+                        <input type="number" class="user-ans" data-index="${i}">
+                    </div>
+                `;
+            });
+        }
+
+        function checkAnswers() {
+            const data = gameData[currentLvl];
+            const inputs = document.querySelectorAll('.user-ans');
+            let correctCount = 0;
+
+            inputs.forEach(input => {
+                const idx = input.getAttribute('data-index');
+                if(parseInt(input.value) === data.eqs[idx].a) {
+                    correctCount++;
+                    input.style.borderColor = "var(--success)";
+                } else {
+                    input.style.borderColor = "red";
+                }
+            });
+
+            if(correctCount === data.eqs.length) {
+                showTrivia();
+            } else {
+                alert("The cryptogram remains locked. Check your calculations!");
+            }
+        }
+
+        function showTrivia() {
+            const data = gameData[currentLvl];
+            document.getElementById('trivia-content').innerText = data.trivia;
+            document.getElementById('trivia-author').innerText = `- ${data.author}`;
+            document.getElementById('step-by-step').innerHTML = data.steps;
+            
+            if(currentLvl === gameData.length - 1) {
+                document.getElementById('next-btn').innerText = "FINISH QUEST";
+            }
+            
+            navigate('page-trivia');
+        }
+
+        function nextLevel() {
+            currentLvl++;
+            if(currentLvl < gameData.length) {
+                navigate('page-game');
+            } else {
+                alert("Congratulations! You've decoded all levels.");
+                location.reload();
+            }
+        }
+
+        window.onload = () => {
+            const mockCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+            document.getElementById('join-code').placeholder = mockCode;
+            new QRCode(document.getElementById("qr-code"), {
+                text: window.location.href, width: 150, height: 150
+            });
+        };
+    </script>
+</body>
+</html>
